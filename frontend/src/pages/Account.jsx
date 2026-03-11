@@ -40,7 +40,6 @@ export default function Account() {
     setError('');
     try {
       const data = await updateAccountProfile(profileImageUrl, getToken);
-      // Refresh auth user in context with updated profile image
       if (user) {
         login(localStorage.getItem('kiva_blog_token'), {
           ...user,
