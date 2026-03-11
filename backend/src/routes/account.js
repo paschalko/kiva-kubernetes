@@ -4,7 +4,6 @@ const Post = require('../models/Post');
 
 const router = express.Router();
 
-// Get current account info + user's posts
 router.get('/', requireAuth, async (req, res) => {
   try {
     const user = req.user;
@@ -26,7 +25,6 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// Update profile image URL
 router.patch('/', requireAuth, async (req, res) => {
   try {
     const { profileImageUrl } = req.body;

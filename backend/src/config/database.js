@@ -1,14 +1,9 @@
-/**
- * MongoDB connection. Set MONGODB_URI in .env (see .env.example).
- * Use mongodb://localhost:27017/kiva-blog for local, or your Atlas connection string.
- * If Atlas gives "querySrv ECONNREFUSED", use the Standard connection string (not SRV) from Atlas.
- */
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
     let uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/kiva-blog';
-    uri = uri.trim().replace(/^=+/, ''); // fix accidental MONGODB_URI== in .env
+    uri = uri.trim().replace(/^=+/, '');
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 10000,
     });

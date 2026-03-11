@@ -1,7 +1,3 @@
-/**
- * Deletes all posts (keeps users).
- * Run from backend folder: node scripts/clear-posts.js
- */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mongoose = require('mongoose');

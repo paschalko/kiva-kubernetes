@@ -6,7 +6,6 @@ const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-// Public: get all posts (no auth required) with optional search (username or title)
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -35,7 +34,6 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
-// Public: get single post
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id).lean();
@@ -51,7 +49,6 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
-// Auth required: create post (title + image or video + caption)
 router.post('/', requireAuth, upload.single('media'), async (req, res) => {
   try {
     if (!req.file) {
@@ -79,7 +76,6 @@ router.post('/', requireAuth, upload.single('media'), async (req, res) => {
   }
 });
 
-// Auth required: like/unlike
 router.post('/:id/like', requireAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -98,7 +94,6 @@ router.post('/:id/like', requireAuth, async (req, res) => {
   }
 });
 
-// Auth required: delete own post
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
