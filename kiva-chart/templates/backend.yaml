@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiva-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: kiva-backend
+  template:
+    metadata:
+      labels:
+        app: kiva-backend
+    spec:
+      containers:
+      - name: kiva-backend
+        image: {{ .Values.backend.image }}
+        imagePullPolicy: Never
+        ports:
+        - containerPort: {{ .Values.backend.port }}
+        env:
+        - name: MONGODB_URI
+          value: {{ .Values.backend.mongoUri }}
+        - name: JWT_SECRET
+          value: {{ .Values.backend.jwtSecret }}
+        - name: PORT
+          value: "{{ .Values.backend.port }}"
+        - name: FRONTEND_URL
+          value: {{ .Values.backend.frontendUrl }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiva-backend
+spec:
+  selector:
+    app: kiva-backend
+  ports:
+  - port: {{ .Values.backend.port }}
+    targetPort: {{ .Values.backend.port }}
