@@ -1,11 +1,30 @@
 backend:
-  image: kiva-backend:latest
+  image: kiva-backend:v2
+  pullPolicy: IfNotPresent
   replicas: 1
   port: 5000
   mongoUri: "mongodb://mongo:27017/kiva-blog"
-  jwtSecret: "kivasecretkey123"
   frontendUrl: "http://localhost"
+  # Leave empty: Helm generates a random secret on first install and keeps it on upgrades.
+  # To set your own: helm install kiva ./kiva-chart --set backend.jwtSecret=$(openssl rand -hex 32)
+  jwtSecret: ""
+  uploadsStorage: 1Gi
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+
 frontend:
   image: kiva-frontend:v2
-  replicas: 1
+  pullPolicy: IfNotPresent
+  replicas: 2
   nodePort: 30080
+  resources:
+    requests: { cpu: 50m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+mongo:
+  image: mongo:6
+  storage: 1Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }

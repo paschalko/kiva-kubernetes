@@ -1,7 +1,11 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  // Refuse to start with a guessable default secret
+  throw new Error('JWT_SECRET environment variable is not set');
+}
 
 const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;

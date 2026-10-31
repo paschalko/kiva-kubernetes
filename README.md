@@ -1,50 +1,79 @@
-# Kiva Blog — Kubernetes Deployment with Helm
+# Kiva Blog: Kubernetes Deployment with Helm
 
-A 3-tier blog application deployed to Kubernetes using Helm charts.
+A 3-tier blog application (React, Node.js/Express, MongoDB) packaged as a Helm chart
+and deployed to Kubernetes, with rolling updates, health probes and persistent storage.
 
 ## Architecture
 
-- **Frontend** — React app served via Nginx
-- **Backend** — Node.js/Express REST API
-- **Database** — MongoDB
+```
+Browser → NodePort Service → Frontend (Nginx, 2 replicas)
+                                  │  /api, /uploads
+                                  ▼
+                            Backend (Express API) ──► MongoDB
+                                  │                     │
+                           uploads volume (PVC)   data volume (PVC)
+```
 
-## Tech Stack
+- **Frontend**: React app built with Vite and served by Nginx, which also proxies `/api` to the backend
+- **Backend**: Node.js/Express REST API with JWT authentication
+- **Database**: MongoDB with a PersistentVolumeClaim, so data survives pod restarts
 
-- Kubernetes (Minikube for local)
-- Helm
-- Docker
-- Node.js
-- React
-- MongoDB
-- Nginx
+## What the chart does
 
-## Project Structure
+| Feature | How |
+|---|---|
+| Zero-downtime updates | `RollingUpdate` with `maxUnavailable: 0`, so new pods must pass readiness checks before old ones stop |
+| Health checks | Readiness and liveness probes on every tier (`/healthz`, `/api/health`, MongoDB TCP) |
+| Secrets | JWT secret stored in a Kubernetes Secret, generated on first install and kept on upgrades |
+| Persistence | PVCs for MongoDB data and uploaded images |
+| Resource control | CPU and memory requests and limits on every container |
+| Configuration | All settings in one `values.yaml` |
 
-kiva-chart/          — Helm chart
+## Project structure
+
+```
+kiva-chart/
   templates/
-    frontend.yaml    — Frontend Deployment + Service
-    backend.yaml     — Backend Deployment + Service
-    mongo.yaml       — MongoDB Deployment + Service
-  values.yaml        — Configuration values
+    frontend.yaml   Frontend Deployment + NodePort Service
+    backend.yaml    Backend Deployment + Service
+    mongo.yaml      MongoDB Deployment + Service
+    secret.yaml     JWT secret
+    pvc.yaml        Storage for MongoDB and uploads
+  values.yaml
 frontend/
-  Dockerfile         — Multi-stage build (Node → Nginx)
-  nginx.conf         — Reverse proxy config
+  Dockerfile        Multi-stage build (Node → Nginx)
+  nginx.conf        Static files + reverse proxy to the backend
 backend/
-  Dockerfile         — Node.js container
+  Dockerfile        Node.js API image (runs as non-root)
+```
 
-## How it works
+## Deploy locally (Minikube)
 
-Each tier runs in its own Kubernetes pod. The frontend Nginx container proxies API requests to the backend service. The backend connects to MongoDB using Kubernetes internal DNS. Helm manages all manifests and configuration through a single values.yaml file.
-
-## Deploy locally
-
+```bash
 minikube start --driver=docker
+
+# Build images inside Minikube's Docker
+eval $(minikube docker-env)
+docker build -t kiva-frontend:v2 ./frontend
+docker build -t kiva-backend:v2 ./backend
+
 helm install kiva ./kiva-chart
+kubectl get pods -w          # wait until all pods are Running and Ready
 minikube service kiva-frontend
 ```
 
----
+Upgrade after a change, with no downtime:
 
-**GitHub repo description** (the one liner under the repo name):
+```bash
+docker build -t kiva-backend:v3 ./backend
+helm upgrade kiva ./kiva-chart --set backend.image=kiva-backend:v3
+kubectl rollout status deployment/kiva-backend
 ```
-3-tier blog app (React + Node.js + MongoDB) deployed to Kubernetes using Helm charts
+
+## Run the backend without Kubernetes
+
+```bash
+cd backend
+cp .env.example .env    # set JWT_SECRET and MONGODB_URI
+npm install && npm run dev
+```

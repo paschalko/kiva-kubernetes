@@ -4,6 +4,12 @@ metadata:
   name: kiva-backend
 spec:
   replicas: {{ .Values.backend.replicas }}
+  # Start the new pod and wait until it is ready before stopping the old one
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: kiva-backend
@@ -11,22 +17,49 @@ spec:
     metadata:
       labels:
         app: kiva-backend
+      annotations:
+        # Restart pods when the secret changes
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       containers:
-      - name: kiva-backend
-        image: {{ .Values.backend.image }}
-        imagePullPolicy: Never
-        ports:
-        - containerPort: {{ .Values.backend.port }}
-        env:
-        - name: MONGODB_URI
-          value: {{ .Values.backend.mongoUri }}
-        - name: JWT_SECRET
-          value: {{ .Values.backend.jwtSecret }}
-        - name: PORT
-          value: "{{ .Values.backend.port }}"
-        - name: FRONTEND_URL
-          value: {{ .Values.backend.frontendUrl }}
+        - name: kiva-backend
+          image: {{ .Values.backend.image }}
+          imagePullPolicy: {{ .Values.backend.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+          env:
+            - name: MONGODB_URI
+              value: {{ .Values.backend.mongoUri | quote }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kiva-backend-secrets
+                  key: JWT_SECRET
+            - name: PORT
+              value: {{ .Values.backend.port | quote }}
+            - name: FRONTEND_URL
+              value: {{ .Values.backend.frontendUrl | quote }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.backend.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.backend.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: kiva-uploads
 ---
 apiVersion: v1
 kind: Service
@@ -36,5 +69,5 @@ spec:
   selector:
     app: kiva-backend
   ports:
-  - port: {{ .Values.backend.port }}
-    targetPort: {{ .Values.backend.port }}
+    - port: {{ .Values.backend.port }}
+      targetPort: {{ .Values.backend.port }}

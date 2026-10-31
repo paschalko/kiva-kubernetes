@@ -4,6 +4,11 @@ metadata:
   name: kiva-frontend
 spec:
   replicas: {{ .Values.frontend.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: kiva-frontend
@@ -13,11 +18,24 @@ spec:
         app: kiva-frontend
     spec:
       containers:
-      - name: kiva-frontend
-        image: {{ .Values.frontend.image }}
-        imagePullPolicy: Never
-        ports:
-        - containerPort: 80
+        - name: kiva-frontend
+          image: {{ .Values.frontend.image }}
+          imagePullPolicy: {{ .Values.frontend.pullPolicy }}
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
 ---
 apiVersion: v1
 kind: Service
@@ -28,6 +46,6 @@ spec:
   selector:
     app: kiva-frontend
   ports:
-  - port: 80
-    targetPort: 80
-    nodePort: {{ .Values.frontend.nodePort }}
+    - port: 80
+      targetPort: 80
+      nodePort: {{ .Values.frontend.nodePort }}

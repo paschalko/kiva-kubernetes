@@ -4,6 +4,9 @@ metadata:
   name: mongo
 spec:
   replicas: 1
+  # A single database pod with one volume: stop the old pod before starting a new one
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongo
@@ -13,10 +16,29 @@ spec:
         app: mongo
     spec:
       containers:
-      - name: mongo
-        image: mongo:6
-        ports:
-        - containerPort: 27017
+        - name: mongo
+          image: {{ .Values.mongo.image }}
+          ports:
+            - containerPort: 27017
+          readinessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.mongo.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mongo-data
 ---
 apiVersion: v1
 kind: Service
@@ -26,5 +48,5 @@ spec:
   selector:
     app: mongo
   ports:
-  - port: 27017
-    targetPort: 27017
+    - port: 27017
+      targetPort: 27017
